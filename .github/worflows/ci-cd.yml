@@ -1,0 +1,66 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: etldb
+          POSTGRES_USER: rafael
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+
+      - name: Install producer dependencies
+        working-directory: ./producer
+        run: pip install -r requirements.txt
+
+      - name: Lint producer
+        run: |
+          pip install flake8
+          flake8 ./producer
+
+      - name: Build Docker containers
+        run: docker-compose build
+
+      # Əgər testlər əlavə etsən
+      # - name: Run unit tests
+      #   run: pytest
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Deploy (optional manual step)
+        run: |
+          echo "Manual deploy or push to remote server with docker-compose"
+          # misal üçün: scp + ssh ilə VPS-ə göndərmək
+

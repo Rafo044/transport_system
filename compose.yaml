@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: rafael
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: etldb
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+
+  memphis:
+    image: memphisos/memphis:latest
+    container_name: memphis
+    ports:
+      - "9000:9000"
+      - "6666:6666" # Memphis broker port
+    environment:
+      MEMPHIS_DEV_MODE: "true"
+
+  debezium:
+    image: debezium/connect:1.9
+    container_name: debezium
+    depends_on:
+      - postgres
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092  # Kafka olmadan istifadə edirik
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: my_connect_configs
+      OFFSET_STORAGE_TOPIC: my_connect_offsets
+      STATUS_STORAGE_TOPIC: my_connect_statuses
+    volumes:
+      - ./debezium/connector-config.json:/kafka/connect/debezium-connector.json
+
+  metabase:
+    image: metabase/metabase
+    container_name: metabase2
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: etldb
+      MB_DB_PORT: 5432
+      MB_DB_USER: rafael
+      MB_DB_PASS: secret
+      MB_DB_HOST: postgres
+    depends_on:
+      - postgres
+
+  producer:
+    build: ./producer
+    container_name: faker_producer
+    depends_on:
+      - memphis
+    environment:
+      MEMPHIS_BROKER: memphis
+      MEMPHIS_PORT: 6666
+
+  etl:
+    build: ./etl
+    container_name: etl_consumer
+    depends_on:
+      - memphis
+      - postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: rafael
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: etldb
+      MEMPHIS_BROKER: memphis
+      MEMPHIS_PORT: 6666
+
