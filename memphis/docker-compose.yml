@@ -7,7 +7,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - memphis
+      - etl
     ports:
       - '5005:5005'
     environment:
@@ -28,7 +28,7 @@ services:
     restart: on-failure
     pull_policy: always
     networks:
-      - memphis
+      - etl
     ports:
       - "9000:9000"
       - "6666:6666"
@@ -50,7 +50,7 @@ services:
     restart: on-failure
     pull_policy: always
     networks:
-      - memphis
+      - etl
     ports:
       - "4444:4444"
     environment:
@@ -63,6 +63,6 @@ services:
       MEMPHIS_HOST: memphis
       HTTP_PORT: 4444
 networks:
-  memphis:
+  etl:
     ipam:
       driver: default
